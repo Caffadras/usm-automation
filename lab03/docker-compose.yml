@@ -1,0 +1,14 @@
+services:
+  web:
+    image: php:8.3-apache
+    volumes:
+      - ./lab02prep/app:/var/www/html
+    env_file:
+      - ./lab02prep/.env
+
+  cron:
+    build: .
+    environment:
+      API_URL: http://web/
+    depends_on:
+      - web
