@@ -1,0 +1,45 @@
+pipeline {
+    agent {
+        label 'php-agent'
+    }
+
+    stages {
+        stage('Install Dependencies') {
+            steps {
+                echo 'Preparing project...'
+                git url: 'https://github.com/Caffadras/usm-app-containerization.git', branch: 'main'
+                dir('containers08') {
+                    sh '''
+                        php --version
+                        # tests.php loads ../config.php, so the tests must sit inside the site folder
+                        cp -r tests site/
+                        # tests change the data, so every build starts from a fresh database
+                        rm -f /var/www/db/db.sqlite
+                        sqlite3 /var/www/db/db.sqlite < sql/schema.sql
+                    '''
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                echo 'Running tests...'
+                dir('containers08/site') {
+                    sh 'php tests/tests.php'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline completed.'
+        }
+        success {
+            echo 'All stages completed successfully!'
+        }
+        failure {
+            echo 'Errors detected in the pipeline.'
+        }
+    }
+}
