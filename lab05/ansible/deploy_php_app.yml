@@ -1,0 +1,45 @@
+- name: Deploy the PHP project to the test server
+  hosts: test
+  become: true
+  vars:
+    app_root: /var/www/php-app
+    db_dir: /var/www/db
+    # path to the cloned project on the Ansible agent, passed by the pipeline with -e
+    app_src: ""
+
+  tasks:
+    - name: Check that the project path is set
+      assert:
+        that: app_src | length > 0
+        fail_msg: "Pass the project path: -e app_src=/path/to/containers08"
+
+    - name: Copy project files
+      copy:
+        src: "{{ app_src }}/site/"
+        dest: "{{ app_root }}/"
+        owner: www-data
+        group: www-data
+
+    # SQLite writes a journal file next to the database, so the folder must be writable too
+    - name: Create database folder
+      file:
+        path: "{{ db_dir }}"
+        state: directory
+        owner: www-data
+        group: www-data
+
+    - name: Copy database schema
+      copy:
+        src: "{{ app_src }}/sql/schema.sql"
+        dest: /tmp/schema.sql
+
+    - name: Create database if it does not exist
+      shell: sqlite3 {{ db_dir }}/db.sqlite < /tmp/schema.sql
+      args:
+        creates: "{{ db_dir }}/db.sqlite"
+
+    - name: Give the database to Apache
+      file:
+        path: "{{ db_dir }}/db.sqlite"
+        owner: www-data
+        group: www-data

@@ -1,0 +1,18 @@
+FROM ubuntu:24.04
+
+# Java runs the Jenkins agent process, sshd lets Jenkins start it, curl checks the deployed site
+RUN apt-get update && \
+    apt-get install -y ansible git curl openssh-server openjdk-21-jre-headless && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /run/sshd
+
+RUN useradd -m -s /bin/bash jenkins && \
+    mkdir -p /home/jenkins/agent /home/jenkins/.ssh && \
+    chmod 700 /home/jenkins/.ssh
+
+COPY secrets/jenkins_ansible_agent_key.pub /home/jenkins/.ssh/authorized_keys
+
+RUN chmod 600 /home/jenkins/.ssh/authorized_keys && \
+    chown -R jenkins:jenkins /home/jenkins
+
+CMD ["/usr/sbin/sshd", "-D", "-e"]

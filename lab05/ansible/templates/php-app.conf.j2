@@ -1,0 +1,14 @@
+<VirtualHost *:80>
+    ServerName {{ server_name }}
+    DocumentRoot {{ app_root }}
+    DirectoryIndex index.php
+
+    <Directory {{ app_root }}>
+        Options -Indexes
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/php-app-error.log
+    CustomLog ${APACHE_LOG_DIR}/php-app-access.log combined
+</VirtualHost>

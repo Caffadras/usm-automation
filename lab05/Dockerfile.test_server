@@ -1,0 +1,25 @@
+FROM ubuntu:24.04
+
+# python3 is required on every host that Ansible manages
+RUN apt-get update && \
+    apt-get install -y openssh-server python3 sudo && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /run/sshd
+
+# key login only
+RUN sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config
+
+RUN useradd -m -s /bin/bash ansible && \
+    echo 'ansible ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/ansible && \
+    chmod 440 /etc/sudoers.d/ansible && \
+    mkdir -p /home/ansible/.ssh && \
+    chmod 700 /home/ansible/.ssh
+
+COPY secrets/ansible_test_server_key.pub /home/ansible/.ssh/authorized_keys
+
+RUN chmod 600 /home/ansible/.ssh/authorized_keys && \
+    chown -R ansible:ansible /home/ansible/.ssh
+
+EXPOSE 22 80
+
+CMD ["/usr/sbin/sshd", "-D", "-e"]

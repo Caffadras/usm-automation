@@ -1,0 +1,9 @@
+FROM jenkins/ssh-agent
+
+# composer, unzip, php-xml and php-mbstring are needed to install and run PHPUnit
+RUN apt-get update && \
+    apt-get install -y php-cli php-sqlite3 php-xml php-mbstring sqlite3 composer unzip && \
+    rm -rf /var/lib/apt/lists/*
+
+# the lab04 pipeline still keeps its database here
+RUN mkdir -p /var/www/db && chown jenkins:jenkins /var/www/db

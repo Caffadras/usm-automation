@@ -1,0 +1,79 @@
+- name: Configure test server for the PHP project
+  hosts: test
+  become: true
+  vars:
+    server_name: localhost
+    app_root: /var/www/php-app
+
+  tasks:
+    - name: Install Apache, PHP and PHP extensions
+      apt:
+        name:
+          - apache2
+          - php
+          - libapache2-mod-php
+          - php-sqlite3
+          - php-mbstring
+          - sqlite3
+        state: present
+        update_cache: true
+
+    - name: Find PHP version
+      command: php -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;'
+      register: php_version
+      changed_when: false
+
+    - name: Configure PHP for Apache
+      copy:
+        dest: "/etc/php/{{ php_version.stdout }}/apache2/conf.d/99-php-app.ini"
+        content: |
+          display_errors = Off
+          log_errors = On
+          date.timezone = Europe/Chisinau
+      notify: Restart Apache
+
+    - name: Set global ServerName to silence the Apache warning
+      copy:
+        dest: /etc/apache2/conf-enabled/servername.conf
+        content: "ServerName {{ server_name }}\n"
+      notify: Restart Apache
+
+    - name: Create project folder
+      file:
+        path: "{{ app_root }}"
+        state: directory
+        owner: www-data
+        group: www-data
+
+    - name: Add virtual host for the project
+      template:
+        src: templates/php-app.conf.j2
+        dest: /etc/apache2/sites-available/php-app.conf
+      notify: Restart Apache
+
+    - name: Enable the project site
+      command: a2ensite php-app
+      args:
+        creates: /etc/apache2/sites-enabled/php-app.conf
+      notify: Restart Apache
+
+    - name: Disable the default site
+      command: a2dissite 000-default
+      args:
+        removes: /etc/apache2/sites-enabled/000-default.conf
+      notify: Restart Apache
+
+    - name: Check Apache config
+      command: apache2ctl configtest
+      changed_when: false
+
+    - name: Start Apache
+      service:
+        name: apache2
+        state: started
+
+  handlers:
+    - name: Restart Apache
+      service:
+        name: apache2
+        state: restarted
